@@ -1,0 +1,185 @@
+/*
+CO226 DATABASE PROJECT- PHYSICAL MODEL
+GROUP 06 : E/17/194 , E/17/134 , E/17/058 
+SUBMITTED DATE: 02/11/2020
+******************************************
+Database creation script
+******************************************
+*/
+
+DROP DATABASE IF EXISTS Project;
+CREATE DATABASE Project;
+USE Project;
+
+CREATE TABLE Company(
+	CompanyID VARCHAR(6) PRIMARY KEY,
+	Name VARCHAR(30) NOT NULL,
+	BRC_No VARCHAR(10),
+	Email VARCHAR(40),
+	Password VARCHAR(30) CHECK (LENGTH(Password) >=8 and LENGTH(Password) <= 30),
+	Company_Type ENUM('Customer','Distributor')
+);
+
+ALTER TABLE Company 
+modify COLUMN Email VARCHAR(40) UNIQUE;
+
+CREATE TABLE Location(
+	CompanyID VARCHAR(6),
+	CLocation VARCHAR (40),
+	CONSTRAINT FOREIGN KEY(CompanyID) REFERENCES Company(CompanyID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	PRIMARY KEY(CompanyID,CLocation)
+);
+CREATE TABLE Distributor_Employee(
+	UserID VARCHAR(10) PRIMARY KEY,
+	CompanyID VARCHAR(6),
+	Name VARCHAR(30) NOT NULL,
+	NIC_No VARCHAR(12) NOT NULL,
+	Email VARCHAR(40) NOT NULL,
+	Password VARCHAR(30) CHECK (LENGTH(Password) >=8 and LENGTH(Password) <= 30),
+	JobType ENUM('Manager','Sales Person','Accountant'),
+	
+	CONSTRAINT FOREIGN KEY(CompanyID) REFERENCES Company(CompanyID)
+		ON DELETE CASCADE ON UPDATE CASCADE
+		
+);
+
+CREATE TABLE Customer_Employee(
+	UserID VARCHAR(10) PRIMARY KEY,
+	CompanyID VARCHAR(6),
+	Name VARCHAR(30) NOT NULL,
+	NIC_No VARCHAR(12) NOT NULL,
+	Email VARCHAR(40) NOT NULL,
+	Password VARCHAR(30) CHECK (LENGTH(Password) >=8 and LENGTH(Password) <= 30),
+	JobType ENUM('Manager','Supervisor','PurchaseMGR','Accountant'),
+	Supervisor_dep VARCHAR(30),
+	/*Dist_accountant VARCHAR(10),
+	Outstanding_id VARCHAR(10),
+	Outstd_Duedate DATE,
+	Outstd_balance DOUBLE(10,2),*/
+	
+	CONSTRAINT FOREIGN KEY(CompanyID) REFERENCES Company(CompanyID)
+		ON DELETE CASCADE ON UPDATE CASCADE
+	/*CONSTRAINT FOREIGN KEY(Dist_accountant) REFERENCES Distributor_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE*/
+);
+
+ALTER TABLE Company
+ADD CustMGR VARCHAR(10),
+ADD DistMGR VARCHAR(10),
+ADD CONSTRAINT FOREIGN KEY(CustMGR) REFERENCES Customer_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+ADD CONSTRAINT FOREIGN KEY(DistMGR) REFERENCES Distributor_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE;
+#drop table places;
+#drop table distributes;
+#drop table Product;
+CREATE TABLE Product(
+	CompanyID VARCHAR(6),
+	ProductID VARCHAR(10) PRIMARY KEY,
+	ProductName VARCHAR(50) NOT NULL,
+	Brand VARCHAR(30) default "Unspecified",
+	Price DOUBLE(10,2) NOT NULL,
+	MFD_Country VARCHAR(20),
+	Original BOOL
+);
+
+CREATE TABLE `Order`(
+	OrderID INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	DueDate DATE
+);
+
+CREATE TABLE Payment(
+	PaymentID VARCHAR(15) PRIMARY KEY,
+	Amount DOUBLE(10,2) NOT NULL,
+	Method ENUM('Credit card','Cheque','Cash')
+);
+
+CREATE TABLE Invoice(
+	PaymentID VARCHAR(15),
+	InvoiceNo VARCHAR(15),
+	
+	CONSTRAINT FOREIGN KEY(PaymentID) REFERENCES Payment(PaymentID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	PRIMARY KEY(PaymentID,InvoiceNo)
+);
+
+CREATE TABLE Places(
+	PurchasingMGR_ID VARCHAR(10),
+	Salesperson_ID VARCHAR(10),
+	OrderID INTEGER ,
+	ProductID VARCHAR(10),
+	quantites INTEGER NOT NULL,
+
+	CONSTRAINT FOREIGN KEY (PurchasingMGR_ID) REFERENCES Customer_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY (Salesperson_ID) REFERENCES Distributor_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY (OrderID) REFERENCES `Order`(OrderID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	PRIMARY KEY(PurchasingMGR_ID,Salesperson_ID,OrderID,ProductID)
+);
+
+CREATE TABLE Rates(
+	
+	Supervisor_ID VARCHAR(10),
+	ProductID VARCHAR(10),
+	RATE FLOAT,
+
+	CONSTRAINT FOREIGN KEY (Supervisor_ID) REFERENCES Customer_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	PRIMARY KEY(Supervisor_ID,ProductID,RATE)
+);
+
+CREATE TABLE Sends(
+
+	Customer_accountant VARCHAR(10),
+	Distributor_accountant VARCHAR(10),
+	PaymentID VARCHAR(15),
+
+	CONSTRAINT FOREIGN KEY (Customer_accountant) REFERENCES Customer_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY (Distributor_accountant) REFERENCES Distributor_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE,	
+	CONSTRAINT FOREIGN KEY(PaymentID) REFERENCES Payment(PaymentID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	PRIMARY KEY(Customer_accountant,Distributor_accountant,PaymentID)
+);
+
+CREATE TABLE Distributes(
+	CustCompany VARCHAR(6),
+	Salesperson_ID VARCHAR(10),
+	ProductID VARCHAR(10),
+	Bill_ID INTEGER,
+	OrderID INTEGER,
+	Deliverydate DATE,	
+
+	CONSTRAINT FOREIGN KEY(CustCompany) REFERENCES Company(CompanyID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY (Salesperson_ID) REFERENCES Distributor_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY (OrderID) REFERENCES `Order`(OrderID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+
+	PRIMARY KEY(CustCompany,Salesperson_ID,ProductID)
+);
+
+CREATE TABLE Notifies (
+	Cust_acountant VARCHAR(6),
+	Dist_accountant VARCHAR(6),
+	Out_id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	outduedate DATE,
+	Out_balance DOUBLE(10,2),
+
+	CONSTRAINT FOREIGN KEY(Cust_acountant) REFERENCES Customer_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT FOREIGN KEY(Dist_accountant) REFERENCES Distributor_Employee(UserID)
+		ON DELETE CASCADE ON UPDATE CASCADE
+);
+
